@@ -1,0 +1,5 @@
+-- Legacy password normalization is no longer required because the project no longer
+-- ships with a hardcoded admin and user1 credential seed.
+--
+-- This migration now acts as a no-op for compatibility and preserves the original
+-- schema history while avoiding any dependency on the removed default password set.

@@ -1,0 +1,7 @@
+-- SecureWipe no longer uses a baked-in default admin credential seed.
+-- The application now bootstraps the first admin account at startup from
+-- ADMIN_USERNAME / ADMIN_PASSWORD environment variables, or generates a
+-- one-time random password when those variables are not supplied.
+--
+-- This migration intentionally leaves the users table without a hardcoded
+-- default privileged account so the system does not ship with a known password.

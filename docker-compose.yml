@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+
+  # ── MySQL 8.0 ──────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: securewipe-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: securewipe_db
+      MYSQL_USER: securewipe_user
+      MYSQL_PASSWORD: SecureWipe@2024
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - securewipe-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+  # ── Spring Boot Backend ────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: securewipe-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_USERNAME: securewipe_user
+      DB_PASSWORD: SecureWipe@2024
+      JWT_SECRET: SecureWipeJWTSecretKey2024SuperLongSecretForHMAC512AlgorithmMinistryOfMinesGoI
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - securewipe-net
+    volumes:
+      - /dev:/dev:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── React Frontend (Nginx) ─────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: securewipe-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - securewipe-net
+    # Allows nginx inside this container to resolve "host.docker.internal"
+    # to the host machine. Required on Linux; automatic on Docker Desktop (Win/Mac).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  securewipe-net:
+    driver: bridge
